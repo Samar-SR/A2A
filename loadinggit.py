@@ -1,6 +1,3 @@
-
-
-
 import requests, zipfile
 from io import BytesIO
 import zipfile
@@ -9,8 +6,7 @@ from pathlib import Path
 from typing import List
 
 
-
-def traverse_directory(path: Path, level=0, base_path=None, skip_files=List[str],skip_directory=List[str]):
+def traverse_directory(path: Path, level=0, base_path=None, skip_files=List[str], skip_directory=List[str]):
     """
     Traverse the directory and print all files and directories in a tree format.
     """
@@ -30,20 +26,18 @@ def traverse_directory(path: Path, level=0, base_path=None, skip_files=List[str]
             f.write(f"{indent}{prefix} {relative_path}\n")
             f.close()
 
-        import chardet
 
-        if item.is_file()  and item.name not in skip_files:
+        if item.is_file() and item.name not in skip_files:
             with open(item.absolute(), 'rb') as file_in, open('content.txt', 'a') as file_out:
                 data = file_in.read()
-                file_out.write(f"\n \n Content of file {relative_path}:\n \n \n \n  {data} \n \n Content ends of file {relative_path} {'-'*40}\n")
+                file_out.write(
+                    f"\n \n Content of file {relative_path}:\n \n \n \n  {data} \n \n Content ends of file {relative_path} {'-' * 40}\n")
                 file_out.close()
                 file_in.read()
-
 
         if item.is_dir():
             if item.name not in skip_directory:
                 traverse_directory(item, level + 1, base_path)
-
 
 
 def download_github_repo_as_zip(repo_url, extract_to="./repo"):
@@ -54,7 +48,6 @@ def download_github_repo_as_zip(repo_url, extract_to="./repo"):
 
     response = requests.get(zip_url)
     response.raise_for_status()
-
 
     with zipfile.ZipFile(BytesIO(response.content)) as zip_ref:
         with TemporaryDirectory(delete=False) as tmpdir:

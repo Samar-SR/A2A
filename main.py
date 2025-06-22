@@ -1,8 +1,6 @@
-
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile
 
 app = FastAPI()
-
 
 
 @app.get("/")
@@ -11,5 +9,13 @@ def read_root():
 
 
 @app.get("/documentation")
-def write_documentation():
-    return {"message": "This is the documentation endpoint. You can add more details here."}
+def write_documentation(file: UploadFile, link: str):
+    if file and link:
+        return {"message": "Please pass only the url or zip of repository"}
+    elif file and not link:
+
+    elif not file and link:
+
+    else:
+        return {"message": "This is the documentation endpoint. You can add more details here."}
+

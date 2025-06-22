@@ -1,6 +1,5 @@
+import json
 from asyncio import Event
-
-from IPython.core.application import base_flags
 from google import genai
 from google.adk.agents import LlmAgent,SequentialAgent
 from google.adk.models.lite_llm import LiteLlm
@@ -8,7 +7,7 @@ from google.adk.runners import Runner
 from pathlib import Path
 from typing import List, Generator
 
-from google.cloud.aiplatform_v1beta1.types import session_service
+from google.genai import types
 
 import zip_extractor,loadinggit
 
@@ -89,23 +88,45 @@ final_agent = SequentialAgent(
 
 root_agent = final_agent
 
+USER_ID = "A"
+SESSION_ID = "B"
 
 
-# Simplified view of Runner's main loop logic
-def run(new_query) -> Generator[Event]:
-    # 1. Append new_query to session event history (via SessionService)
-    session_service.append_event(session, Event(author='user', content=new_query))
+from google.adk.memory import InMemoryMemoryService
 
-    # 2. Kick off event loop by calling the agent
-    agent_event_generator = root_agent.run_async(context)
+memory_service = InMemoryMemoryService()
 
-    async for event in agent_event_generator:
-        # 3. Process the generated event and commit changes
-        session_service.append_event(session, event) # Commits state/artifact deltas etc.
-        # memory_service.update_memory(...) # If applicable
-        # artifact_service might have already been called via context during agent run
+runner = Runner(
+    root_agent= root_agent,
+    app_name= "Documentation_APP",
+    session_services = memory_service
+)
 
-        # 4. Yield event for upstream processing (e.g., UI rendering)
-        yield event
-        # Runner implicitly signals agent generator can continue after yielding
+
+
+async def execute():
+
+    await memory_service.create_session(
+        app_name="activities_app",
+        user_id=USER_ID,
+        session_id=SESSION_ID
+    )
+
+    prompt = f""
+
+    message = types.Content(role="user", parts=[types.Part(text=prompt)])
+    async for event in runner.run_async(user_id=USER_ID, session_id=SESSION_ID, new_message=message):
+        if event.is_final_response():
+            response_text = event.content.parts[0].text
+            try:
+                parsed = json.loads(response_text)
+                if "activities" in parsed and isinstance(parsed["activities"], list):
+                    return {"activities": parsed["activities"]}
+                else:
+                    print("'activities' key missing or not a list in response JSON")
+                    return {"activities": response_text}  # fallback to raw text
+            except json.JSONDecodeError as e:
+                print("JSON parsing failed:", e)
+                print("Response content:", response_text)
+                return {"activities": response_text}  # fallback to raw text
 
